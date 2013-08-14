@@ -6,6 +6,7 @@ class Snake(object):
         self.id = id
         self.body = [head] * length
         self.direction = direction
+        self.dead = False
 
     @property
     def head(self):

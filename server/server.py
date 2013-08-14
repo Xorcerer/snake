@@ -18,29 +18,37 @@ class Player(object):
     def __init__(self, controller):
         self.controller = controller
 
-    def new_snake(self):
-        snake = getattr(self, 'snake', None)
+    @property
+    def snake(self):
+        snake = getattr(self, '__snake', None)
         if snake and not snake.dead:
-            return
+            return snake
+        return None
 
-        self.snake = Snake(1, head=complex(0, 0),
+    def new_snake(self):
+        snake = self.snake
+        if snake:
+            return
+        
+        self.__snake = Snake(1, head=complex(0, 0),
                            length=INIT_LENGTH, direction=complex(1, 0))
-        self.controller.add_snake(self.snake)
+        self.controller.add_snake(self.__snake)
 
     def set_direction(self, direction):
-        snake = getattr(self, 'snake', None)
-        if not snake or snake.dead:
+        snake = self.snake
+        if not snake:
             return
 
         d = complex(*direction)
         if sorted((d.imag, d.read)) != (0, 1):
             return
-        self.snake.direction = d
+        snake.direction = d
 
 def tick_loop(controller, socks):
     while True:
         gevent.sleep(1)
         controller.tick()
+        print 'tick'
         data = controller.to_json_dict()
         json_data = json.dumps(data)
 
@@ -50,7 +58,7 @@ def tick_loop(controller, socks):
                 s.send(json_data)
                 s.send('\r\n')
             except Exception as e:
-                print e
+                print 'tick_loop exited for:', e
                 socks.remove(s)
 
 def snake_control_loop(controller, sock):
@@ -60,7 +68,7 @@ def snake_control_loop(controller, sock):
         try:
             buffer += sock.recv(1024)
         except Exception as e:
-            print e
+            print 'snake_control_loop exited for:', e
             return
         parts = buffer.split('\r\n')
         buffer = parts[-1]
