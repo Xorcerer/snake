@@ -17,10 +17,11 @@ INIT_LENGTH = 3
 class Player(object):
     def __init__(self, controller):
         self.controller = controller
-
+        self.__snake = None
+        
     @property
     def snake(self):
-        snake = getattr(self, '__snake', None)
+        snake = self.__snake
         if snake and not snake.dead:
             return snake
         return None
