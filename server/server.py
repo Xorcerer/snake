@@ -57,8 +57,7 @@ def tick_loop(controller, socks):
             try:
                 s.send(json_data)
                 s.send('\r\n')
-            except Exception as e:
-                print 'tick_loop exited for:', e
+            except Exception:
                 socks.remove(s)
 
 def snake_control_loop(controller, sock):
@@ -66,10 +65,14 @@ def snake_control_loop(controller, sock):
     buffer = ''
     while True:
         try:
-            buffer += sock.recv(1024)
+            new_content = sock.recv(1024)
+            if not new_content:
+                print 'A client exited.'
+                return
         except Exception as e:
             print 'snake_control_loop exited for:', e
             return
+        buffer += new_content
         parts = buffer.split('\r\n')
         buffer = parts[-1]
         jsons = parts[:-1]
@@ -97,7 +100,7 @@ def main():
         port = 10080
     listener = socket.socket()
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listener.bind(('172.17.20.221', port))
+    listener.bind(('0.0.0.0', port))
     listener.listen(10)
     socks = set()
 
