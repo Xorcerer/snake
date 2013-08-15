@@ -40,7 +40,7 @@ class Player(object):
             return
 
         d = complex(*direction)
-        if sorted((d.imag, d.read)) != (0, 1):
+        if sorted((d.imag, d.real)) != (0, 1):
             return
         snake.direction = d
 
@@ -79,8 +79,17 @@ def snake_control_loop(controller, sock):
             req = json.loads(j)
             action = req['action']
             args = req.get('args') or {}
-            getattr(player, action)(**args)
-        
+            try:
+                getattr(player, action)(**args)
+            except Exception as e:
+                print e
+
+def listener_loop(listener, socks, controller):
+    while True:        
+        sock, _ = listener.accept()
+        socks.add(sock)
+        gevent.spawn(snake_control_loop, controller, sock)
+
 def main():
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
@@ -88,7 +97,7 @@ def main():
         port = 10080
     listener = socket.socket()
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listener.bind(('localhost', port))
+    listener.bind(('172.17.20.221', port))
     listener.listen(10)
     socks = set()
 
@@ -96,13 +105,9 @@ def main():
     controller = Controller(map)
     task = gevent.spawn(tick_loop, controller, socks)
 
-    while True:
-        
-        sock, _ = listener.accept()
-        socks.add(sock)
-        gevent.spawn(snake_control_loop, controller, sock)
+    listening_task = gevent.spawn(listener_loop, listener, socks, controller)
 
-    gevent.joinall([task])
+    gevent.joinall([listening_task, task])
     listener.close()
 
 if __name__ == '__main__':
