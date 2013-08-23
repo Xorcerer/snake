@@ -6,6 +6,7 @@ import copy
 import json
 import socket
 import sys
+import time
 
 from snake import Snake
 from controller import Controller
@@ -14,6 +15,7 @@ from map import Map
 
 INIT_LENGTH = 3
 
+last_snake_id = 0
 class Player(object):
     def __init__(self, controller):
         self.controller = controller
@@ -26,16 +28,20 @@ class Player(object):
             return snake
         return None
 
-    def new_snake(self):
+    def new_snake(self, sock):
         snake = self.snake
         if snake:
             return
-        
-        self.__snake = Snake(1, head=complex(0, 0),
+
+        global last_snake_id
+        last_snake_id += 1
+        head = complex(0, 0)
+        self.__snake = Snake(last_snake_id, head=head,
                            length=INIT_LENGTH, direction=complex(1, 0))
         self.controller.add_snake(self.__snake)
+        sock.send('{ "new_snake": { "id": %d } }' % last_snake_id + '\r\n')
 
-    def set_direction(self, direction):
+    def set_direction(self, sock, direction):
         snake = self.snake
         if not snake:
             return
@@ -46,12 +52,17 @@ class Player(object):
         if sorted((abs(d.imag), abs(d.real))) != [0, 1]:
             return
         snake.direction = d
+        print 'snake turned to %s.' % direction
+
+def print_tick():
+    sys.stdout.write('tick %d\r' % time.time())
+    sys.stdout.flush()
 
 def tick_loop(controller, socks):
     while True:
         gevent.sleep(1)
         controller.tick()
-        print 'tick'
+        print_tick()
         data = controller.to_json_dict()
         json_data = json.dumps(data)
 
@@ -86,7 +97,7 @@ def snake_control_loop(controller, sock):
             action = req['action']
             args = req.get('args') or {}
             try:
-                getattr(player, action)(**args)
+                getattr(player, action)(sock=sock, **args)
             except Exception as e:
                 print e
 
@@ -109,6 +120,7 @@ def main():
 
     map = Map(complex(10, 10))    
     controller = Controller(map)
+    print 'Tick started...'
     task = gevent.spawn(tick_loop, controller, socks)
 
     listening_task = gevent.spawn(listener_loop, listener, socks, controller)

@@ -29,7 +29,6 @@ class Controller(object):
         self.ticked.clear()
 
     def to_json_dict(self):
-        print {s.id: [ctps(b) for b in s.body] for s in self.snakes}
         return {
             'map': self.map.to_json_dict(),
             'snakes': {s.id: [ctps(b) for b in s.body] for s in self.snakes}
