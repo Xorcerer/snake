@@ -43,7 +43,7 @@ class Player(object):
         if isinstance(direction, (str, unicode)):
             direction = map(int, direction.split(','))
         d = complex(*direction)
-        if sorted((d.imag, d.real)) != (0, 1):
+        if sorted((abs(d.imag), abs(d.real))) != [0, 1]:
             return
         snake.direction = d
 
