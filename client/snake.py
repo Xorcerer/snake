@@ -1,3 +1,4 @@
+""" A console client, donated by fancyzero, would be emoved later for it does not work well."""
 import sys
 import os
 import time
