@@ -12,6 +12,7 @@ NOTHING = 'Nothing'
 EGG = 'Egg'
 WALL = 'Wall'
 
+HALF_BORDER_WIDTH = 2
 def pos_str(x, y):
     return '%d, %d' % (x, y)
 
@@ -24,8 +25,8 @@ class SquareWidget(Widget):
                     NOTHING: (0.1, 0.1, 0.1),
                     EGG: (0.0, 0.5, 0.5),
                     WALL: (0.8, 0.8, 0.8)}[value])
-            Rectangle(pos=(self.pos[0] + 2, self.pos[1] + 2),
-                      size=(self.size[0] - 2, self.size[1] - 2))
+            Rectangle(pos=(self.pos[0] + HALF_BORDER_WIDTH, self.pos[1] + HALF_BORDER_WIDTH),
+                      size=(self.size[0] - HALF_BORDER_WIDTH, self.size[1] - HALF_BORDER_WIDTH))
 
         self.canvas.ask_update()
 
