@@ -20,7 +20,7 @@ class Player(object):
     def __init__(self, controller):
         self.controller = controller
         self.__snake = None
-        
+
     @property
     def snake(self):
         snake = self.__snake
@@ -102,7 +102,7 @@ def snake_control_loop(controller, sock):
                 print e
 
 def listener_loop(listener, socks, controller):
-    while True:        
+    while True:
         sock, _ = listener.accept()
         socks.add(sock)
         gevent.spawn(snake_control_loop, controller, sock)
@@ -112,13 +112,17 @@ def main():
         port = int(sys.argv[1])
     else:
         port = 10080
+    address = '0.0.0.0', port
+
     listener = socket.socket()
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listener.bind(('0.0.0.0', port))
+    listener.bind(address)
     listener.listen(10)
+    print 'Listening on', address
+    
     socks = set()
 
-    map = Map(complex(10, 10))    
+    map = Map(complex(10, 10))
     controller = Controller(map)
     print 'Tick started...'
     task = gevent.spawn(tick_loop, controller, socks)
