@@ -11,7 +11,7 @@ import time
 from snake import Snake
 from controller import Controller
 from map import Map
-
+from utils import complex_to_position_str as ctps
 
 INIT_LENGTH = 3
 
@@ -90,7 +90,7 @@ def snake_control_loop(controller, sock):
         parts = buffer.split('\r\n')
         buffer = parts[-1]
         jsons = parts[:-1]
-        
+
         for j in jsons:
             print 'decoding command "%s"' % j
             req = json.loads(j)
@@ -105,6 +105,7 @@ def listener_loop(listener, socks, controller):
     while True:
         sock, _ = listener.accept()
         socks.add(sock)
+        sock.send('{"map_size": "%s"}\r\n' % ctps(controller.map.size))
         gevent.spawn(snake_control_loop, controller, sock)
 
 def main():

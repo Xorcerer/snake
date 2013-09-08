@@ -31,9 +31,10 @@ class SquareWidget(Widget):
 
 
 class BoardWidget(GridLayout):
-    def __init__(self, rows, cols):
+    def __init__(self, size):
         super(self.__class__, self).__init__()
 
+        rows, cols = size
         self.rows = rows
         self.cols = cols
         self.widgets = {}
@@ -51,7 +52,7 @@ class SnakeApp(App):
         map_state = json.loads(content)
         snakes = map_state.get('snakes', {})
 
-        all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), []))
+        all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), initial=[]))
 
         for pos, square in self.board.widgets.iteritems():
             square.obj = SNAKE if pos in all_snakes_bodies else NOTHING
@@ -59,13 +60,21 @@ class SnakeApp(App):
     def init_connection(self):
         self.sock = socket.create_connection(('localhost', 10080))
         self.sock_file = self.sock.makefile()
+
+        content = self.sock_file.readline()
+        map_state = json.loads(content)
+
+        size_str = map_state['map_size']
+        self.map_size = map(int, size_str.split(','))
+
         self.sock.send('{"action": "new_snake"}\r\n')
 
     def build(self):
         self.init_connection()
 
         Clock.schedule_interval(self.recv_once, 1.0)
-        self.board = BoardWidget(10, 10)
+        print 'map size: %s' % self.map_size
+        self.board = BoardWidget(self.map_size)
 
         return self.board
 
