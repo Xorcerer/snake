@@ -53,7 +53,7 @@ class SnakeApp(App):
         map_state = json.loads(content)
         snakes = map_state.get('snakes', {})
 
-        all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), initial=[]))
+        all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), []))
 
         for pos, square in self.board.widgets.iteritems():
             square.obj = SNAKE if pos in all_snakes_bodies else NOTHING
