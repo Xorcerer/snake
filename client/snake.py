@@ -1,5 +1,7 @@
 import socket
+import select
 import json
+import math
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
@@ -8,6 +10,7 @@ from kivy.properties import OptionProperty
 from kivy.graphics import Color, Rectangle
 
 SNAKE = 'Snake'
+MY_SNAKE = 'MySnake'
 NOTHING = 'Nothing'
 EGG = 'Egg'
 WALL = 'Wall'
@@ -17,7 +20,7 @@ def pos_str(x, y):
     return '%d, %d' % (x, y)
 
 class SquareWidget(Widget):
-    obj = OptionProperty(NOTHING, options=(NOTHING, SNAKE, EGG, WALL))
+    obj = OptionProperty(NOTHING, options=(NOTHING, SNAKE, MY_SNAKE, EGG, WALL))
 
     def on_obj(self, instance, value):
         with self.canvas:
@@ -40,27 +43,62 @@ class BoardWidget(GridLayout):
         self.cols = cols
         self.widgets = {}
 
-        for x in xrange(self.rows * self.cols):
+        for i in xrange(self.rows * self.cols):
             sw = SquareWidget()
-            pos = pos_str(x % self.rows, x / self.cols)
-            self.widgets[pos] = sw
+            pos = i % self.rows, i / self.cols
+            sw.pos = pos
+            self.widgets[pos_str(*pos)] = sw
             self.add_widget(sw)
 
-class SnakeApp(App):
-    def recv_once(self, time_delta):
-        # TODO: `select` before read.
-        content = self.sock_file.readline()
-        map_state = json.loads(content)
-        snakes = map_state.get('snakes', {})
+    def on_touch_down(self, event):
+        print event.pos
 
-        all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), initial=[]))
+    def on_touch_move(self, event):
+        d = math.sqrt((event.ox - event.x) ** 2 + (event.oy - event.y) ** 2)
+        if d > 50:
+            
+        print d
+        
+class SnakeApp(App):
+    def update_map(self, map_state):
+        snakes = map_state.get('snakes') or {}
+        self.snake = snakes.get(self.snake_id) or []
+
+        all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), []))
 
         for pos, square in self.board.widgets.iteritems():
             square.obj = SNAKE if pos in all_snakes_bodies else NOTHING
 
+    def handle_message(self, content):
+        json_obj = json.loads(content)
+
+        if 'snakes' in json_obj:
+            self.update_map(json_obj)
+        if 'new_snake' in json_obj:
+            self.snake_id = json_obj['new_snake']['id']
+
+    def recv(self, time_delta):
+        rlist, _, elist = select.select([self.sock], [], [self.sock], 0)
+        while rlist:
+            content = self.sock.recv(4096)
+            if not content:
+                print 'Server disconnected.'
+                return
+
+            self.buffer += content
+            parts = self.buffer.split('\r\n')
+            messages = parts[:-1]
+            self.buffer = parts[-1]
+            for m in messages:
+                self.handle_message(m)
+
+            rlist, _, elist = select.select([self.sock], [], [self.sock], 0)
+
+
     def init_connection(self):
         self.sock = socket.create_connection(('localhost', 10080))
         self.sock_file = self.sock.makefile()
+        self.buffer = ''
 
         content = self.sock_file.readline()
         map_state = json.loads(content)
@@ -73,7 +111,7 @@ class SnakeApp(App):
     def build(self):
         self.init_connection()
 
-        Clock.schedule_interval(self.recv_once, 1.0)
+        Clock.schedule_interval(self.recv, 1.0)
         print 'map size: %s' % self.map_size
         self.board = BoardWidget(self.map_size)
 
