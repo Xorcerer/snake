@@ -59,11 +59,23 @@ class BoardWidget(GridLayout):
         if d > 50:
             pass # TODO: turn here.
         print d
+        print event.distance
         
 class SnakeApp(App):
     def update_map(self, map_state):
         snakes = map_state.get('snakes') or {}
         self.snake = snakes.get(self.snake_id) or []
+        self.snake = set(self.snake)
+
+        all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), []))
+
+        for pos, square in self.board.widgets.iteritems():
+            if pos in self.snake:
+                square.obj = SNAKE
+            elif pos in all_snakes_bodies:
+                square.obj = MY_SNAKE
+            else:
+                square.obj = NOTHING
 
     def init_keyboard(self, **kwargs):
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
@@ -73,17 +85,6 @@ class SnakeApp(App):
         self._keyboard.unbind(on_key_down=self._on_keyboard_down)
         self._keyboard = None
     
-    def recv_once(self, time_delta):
-        # TODO: `select` before read.
-        content = self.sock_file.readline()
-        map_state = json.loads(content)
-        snakes = map_state.get('snakes', {})
-
-        all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), []))
-
-        for pos, square in self.board.widgets.iteritems():
-            square.obj = SNAKE if pos in all_snakes_bodies else NOTHING
-
     def handle_message(self, content):
         json_obj = json.loads(content)
 
