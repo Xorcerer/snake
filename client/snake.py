@@ -8,6 +8,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.gridlayout import GridLayout
 from kivy.properties import OptionProperty
 from kivy.graphics import Color, Rectangle
+from kivy.core.window import Window
 
 SNAKE = 'Snake'
 MY_SNAKE = 'MySnake'
@@ -25,6 +26,7 @@ class SquareWidget(Widget):
     def on_obj(self, instance, value):
         with self.canvas:
             Color(*{SNAKE: (0.0, 1.0, 1.0),
+                    MY_SNAKE: (0.0, 0.8, 0.8),
                     NOTHING: (0.1, 0.1, 0.1),
                     EGG: (0.0, 0.5, 0.5),
                     WALL: (0.8, 0.8, 0.8)}[value])
@@ -32,7 +34,6 @@ class SquareWidget(Widget):
                       size=(self.size[0] - HALF_BORDER_WIDTH, self.size[1] - HALF_BORDER_WIDTH))
 
         self.canvas.ask_update()
-
 
 class BoardWidget(GridLayout):
     def __init__(self, size):
@@ -56,13 +57,27 @@ class BoardWidget(GridLayout):
     def on_touch_move(self, event):
         d = math.sqrt((event.ox - event.x) ** 2 + (event.oy - event.y) ** 2)
         if d > 50:
-            
+            pass # TODO: turn here.
         print d
         
 class SnakeApp(App):
     def update_map(self, map_state):
         snakes = map_state.get('snakes') or {}
         self.snake = snakes.get(self.snake_id) or []
+
+    def init_keyboard(self, **kwargs):
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+    
+    def _keyboard_closed(self):
+        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        self._keyboard = None
+    
+    def recv_once(self, time_delta):
+        # TODO: `select` before read.
+        content = self.sock_file.readline()
+        map_state = json.loads(content)
+        snakes = map_state.get('snakes', {})
 
         all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), []))
 
@@ -107,8 +122,24 @@ class SnakeApp(App):
         self.map_size = map(int, size_str.split(','))
 
         self.sock.send('{"action": "new_snake"}\r\n')
+    
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        direction = complex(0, 1)
+        if keycode[1] == 'w':
+            direction = complex(0, -1)
+        elif keycode[1] == 's':
+            direction = complex(0, 1)
+        elif keycode[1] == 'a':
+            direction = complex(-1, 0)
+        elif keycode[1] == 'd':
+            direction = complex(1, 0)
+        
+        command = '{"action":"set_direction", "args":{"direction":"%d, %d"}}\r\n' % (direction.real, direction.imag)
+        print command
+        self.sock.send(command)
 
     def build(self):
+        self.init_keyboard()
         self.init_connection()
 
         Clock.schedule_interval(self.recv, 1.0)
