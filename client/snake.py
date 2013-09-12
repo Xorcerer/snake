@@ -6,6 +6,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.gridlayout import GridLayout
 from kivy.properties import OptionProperty
 from kivy.graphics import Color, Rectangle
+from kivy.core.window import Window
 
 SNAKE = 'Snake'
 NOTHING = 'Nothing'
@@ -30,7 +31,6 @@ class SquareWidget(Widget):
 
         self.canvas.ask_update()
 
-
 class BoardWidget(GridLayout):
     def __init__(self, size):
         super(self.__class__, self).__init__()
@@ -47,6 +47,14 @@ class BoardWidget(GridLayout):
             self.add_widget(sw)
 
 class SnakeApp(App):
+    def init_keyboard(self, **kwargs):
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+    
+    def _keyboard_closed(self):
+        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        self._keyboard = None
+    
     def recv_once(self, time_delta):
         # TODO: `select` before read.
         content = self.sock_file.readline()
@@ -69,8 +77,24 @@ class SnakeApp(App):
         self.map_size = map(int, size_str.split(','))
 
         self.sock.send('{"action": "new_snake"}\r\n')
+    
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        direction = complex(0, 1)
+        if keycode[1] == 'w':
+            direction = complex(0, 1)
+        elif keycode[1] == 's':
+            direction = complex(0, -1)
+        elif keycode[1] == 'a':
+            direction = complex(-1, 0)
+        elif keycode[1] == 'd':
+            direction = complex(1, 0)
+        
+        command = '{"action":"set_direction", "args":{"direction":"%d, %d"}}\r\n' % (direction.real, direction.imag)
+        print command
+        self.sock.send(command)
 
     def build(self):
+        self.init_keyboard()
         self.init_connection()
 
         Clock.schedule_interval(self.recv_once, 1.0)
