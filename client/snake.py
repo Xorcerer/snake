@@ -81,9 +81,9 @@ class SnakeApp(App):
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         direction = complex(0, 1)
         if keycode[1] == 'w':
-            direction = complex(0, 1)
-        elif keycode[1] == 's':
             direction = complex(0, -1)
+        elif keycode[1] == 's':
+            direction = complex(0, 1)
         elif keycode[1] == 'a':
             direction = complex(-1, 0)
         elif keycode[1] == 'd':
