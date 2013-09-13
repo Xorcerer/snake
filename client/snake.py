@@ -51,16 +51,23 @@ class BoardWidget(GridLayout):
             self.widgets[pos_str(*pos)] = sw
             self.add_widget(sw)
 
-    def on_touch_down(self, event):
-        print event.pos
-
     def on_touch_move(self, event):
-        d = math.sqrt((event.ox - event.x) ** 2 + (event.oy - event.y) ** 2)
-        if d > 50:
-            pass # TODO: turn here.
-        print d
-        print event.distance
+        if getattr(self, 'moved_in_this_touch', None):
+            return
+
+        dx, dy = event.dpos
+        main_direction = max(dx, dy)
+        if main_direction < 10:
+            return super(BoardWidget, self).on_touch_move(event)
         
+        self.moved_in_this_touch = True
+        # TODO: Turn here. 我不确定我的做法是对的，请随意删改。
+        return True
+
+    def on_touch_up(self, event):
+        self.moved_in_this_touch = None
+        return super(BoardWidget, self).on_touch_up(event)
+
 class SnakeApp(App):
     def update_map(self, map_state):
         snakes = map_state.get('snakes') or {}
@@ -125,7 +132,7 @@ class SnakeApp(App):
         self.sock.send('{"action": "new_snake"}\r\n')
     
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-        direction = complex(0, 1)
+        direction = None
         if keycode[1] == 'w':
             direction = complex(0, -1)
         elif keycode[1] == 's':
@@ -134,6 +141,8 @@ class SnakeApp(App):
             direction = complex(-1, 0)
         elif keycode[1] == 'd':
             direction = complex(1, 0)
+        else:
+            return
         
         command = '{"action":"set_direction", "args":{"direction":"%d, %d"}}\r\n' % (direction.real, direction.imag)
         print command
