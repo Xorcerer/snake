@@ -1,7 +1,9 @@
+# -*- coding: utf-8 -*-
+
 import socket
 import select
 import json
-import math
+
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
