@@ -8,10 +8,6 @@ class Controller(object):
         self.snakes = set()
         self.ticked = Event()
 
-    def put_random_eggs(self):
-        #TODO
-        pass
-
     def add_snake(self, snake):
         self.snakes.add(snake)
 

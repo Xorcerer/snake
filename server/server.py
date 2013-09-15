@@ -54,6 +54,15 @@ class Player(object):
         snake.direction = d
         print 'snake turned to %s.' % direction
 
+def egg_dropping_loop(controller, interval, egg_duration):
+    def remove_egg(map, pos):
+        map.remove(pos)
+
+    while True:
+        gevent.sleep(interval)
+        pos = controller.map.put_random_egg()
+        gevent.spawn_later(egg_duration, remove_egg, controller.map, pos)
+
 def print_tick():
     sys.stdout.write('tick %d\r' % time.time())
     sys.stdout.flush()
@@ -126,11 +135,15 @@ def main():
     map = Map(complex(10, 10))
     controller = Controller(map)
     print 'Tick started...'
-    task = gevent.spawn(tick_loop, controller, socks)
+    tick_task = gevent.spawn(tick_loop, controller, socks)
+    egg_dropping_interval_in_secs = 2
+    egg_duration_in_secs = 10
+    egg_dropping_task = gevent.spawn(egg_dropping_loop, controller,
+                                     egg_dropping_interval_in_secs, egg_duration_in_secs)
 
     listening_task = gevent.spawn(listener_loop, listener, socks, controller)
 
-    gevent.joinall([listening_task, task])
+    gevent.joinall([listening_task, egg_dropping_task, tick_task])
     listener.close()
 
 if __name__ == '__main__':

@@ -12,18 +12,18 @@ from kivy.properties import OptionProperty
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
 
-SNAKE = 'Snake'
-MY_SNAKE = 'MySnake'
-NOTHING = 'Nothing'
-EGG = 'Egg'
-WALL = 'Wall'
+SNAKE = 'snake'
+MY_SNAKE = 'my-snake'
+NOTHING = 'nothing'
+EGG = 'egg'
+BLOCK = 'block'
 
 HALF_BORDER_WIDTH = 2
 def pos_str(x, y):
     return '%d, %d' % (x, y)
 
 class SquareWidget(Widget):
-    obj = OptionProperty(NOTHING, options=(NOTHING, SNAKE, MY_SNAKE, EGG, WALL))
+    obj = OptionProperty(NOTHING, options=(NOTHING, SNAKE, MY_SNAKE, EGG, BLOCK))
 
     def on_obj(self, instance, value):
         with self.canvas:
@@ -31,7 +31,7 @@ class SquareWidget(Widget):
                     MY_SNAKE: (0.0, 0.8, 0.8),
                     NOTHING: (0.1, 0.1, 0.1),
                     EGG: (0.0, 0.5, 0.5),
-                    WALL: (0.8, 0.8, 0.8)}[value])
+                    BLOCK: (0.8, 0.8, 0.8)}[value])
             Rectangle(pos=(self.pos[0] + HALF_BORDER_WIDTH, self.pos[1] + HALF_BORDER_WIDTH),
                       size=(self.size[0] - HALF_BORDER_WIDTH, self.size[1] - HALF_BORDER_WIDTH))
 
@@ -72,19 +72,19 @@ class BoardWidget(GridLayout):
 
 class SnakeApp(App):
     def update_map(self, map_state):
+        items = map_state.get('map') or {}
         snakes = map_state.get('snakes') or {}
         self.snake = snakes.get(self.snake_id) or []
         self.snake = set(self.snake)
 
         all_snakes_bodies = set(reduce(lambda x, y: x + y, snakes.values(), []))
-
         for pos, square in self.board.widgets.iteritems():
             if pos in self.snake:
                 square.obj = SNAKE
             elif pos in all_snakes_bodies:
                 square.obj = MY_SNAKE
             else:
-                square.obj = NOTHING
+                square.obj = items.get(pos, NOTHING)
 
     def init_keyboard(self, **kwargs):
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
