@@ -11,6 +11,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.properties import OptionProperty
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
+from kivy.event import EventDispatcher
 
 SNAKE = 'Snake'
 MY_SNAKE = 'MySnake'
@@ -19,8 +20,23 @@ EGG = 'Egg'
 WALL = 'Wall'
 
 HALF_BORDER_WIDTH = 2
+
 def pos_str(x, y):
     return '%d, %d' % (x, y)
+
+class TouchControllDispatcher(EventDispatcher):
+    def __init__(self, **kwargs):
+        self.register_event_type('on_touch_move_event')
+        super(TouchControllDispatcher, self).__init__(**kwargs)
+            
+    def on_touch_move(self, value):
+        print 'event dispatch'
+        self.dispatch('on_touch_move_event', value)
+
+    def on_touch_move_event(self, *args):
+        pass
+
+touchControllDispatcher = TouchControllDispatcher()
 
 class SquareWidget(Widget):
     obj = OptionProperty(NOTHING, options=(NOTHING, SNAKE, MY_SNAKE, EGG, WALL))
@@ -55,16 +71,14 @@ class BoardWidget(GridLayout):
 
     def on_touch_move(self, event):
         if getattr(self, 'moved_in_this_touch', None):
-            return
-
-        dx, dy = event.dpos
-        main_direction = max(dx, dy)
-        if main_direction < 10:
             return super(BoardWidget, self).on_touch_move(event)
         
         self.moved_in_this_touch = True
-        # TODO: Turn here. 我不确定我的做法是对的，请随意删改。
-        return True
+
+        if getattr(touchControllDispatcher, 'on_touch_move', None) != None:
+            touchControllDispatcher.on_touch_move(event)
+
+        return super(BoardWidget, self).on_touch_move(event)
 
     def on_touch_up(self, event):
         self.moved_in_this_touch = None
@@ -93,6 +107,9 @@ class SnakeApp(App):
     def _keyboard_closed(self):
         self._keyboard.unbind(on_key_down=self._on_keyboard_down)
         self._keyboard = None
+    
+    def init_touch_events(self, **kwargs):
+        touchControllDispatcher.bind(on_touch_move_event=self._on_touch_move_event)
     
     def handle_message(self, content):
         json_obj = json.loads(content)
@@ -134,25 +151,51 @@ class SnakeApp(App):
         self.sock.send('{"action": "new_snake"}\r\n')
     
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        print 'dispatch to _on_keyboard_down'
+        send_turn_command(self, keycode[1])
+    
+    def send_turn_command(self, keycode):
         direction = None
-        if keycode[1] == 'w':
+        if keycode == 'w':
             direction = complex(0, -1)
-        elif keycode[1] == 's':
+        elif keycode == 's':
             direction = complex(0, 1)
-        elif keycode[1] == 'a':
+        elif keycode == 'a':
             direction = complex(-1, 0)
-        elif keycode[1] == 'd':
+        elif keycode == 'd':
             direction = complex(1, 0)
         else:
             return
-        
+            
         command = '{"action":"set_direction", "args":{"direction":"%d, %d"}}\r\n' % (direction.real, direction.imag)
         print command
-        self.sock.send(command)
+        self.sock.send(command)                
+    
+    def _on_touch_move_event(self, *args):
+        value = args[1]
+        dx, dy = value.dpos
+        main_direction = max(abs(dx), abs(dy))
+        if main_direction < 10:
+            pass
+
+        if abs(dx) > abs(dy):
+            if dx > 0:
+                keycode = 'd'
+            else:
+                keycode = 'a'
+        else:
+            if dy < 0:
+                #touch move towards up makes dy > 0
+                keycode = 's'
+            else:
+                keycode = 'w'
+
+        self.send_turn_command(keycode)
 
     def build(self):
         self.init_keyboard()
         self.init_connection()
+        self.init_touch_events()
 
         Clock.schedule_interval(self.recv, 1.0)
         print 'map size: %s' % self.map_size
@@ -162,4 +205,5 @@ class SnakeApp(App):
 
 
 if __name__ == '__main__':
-    SnakeApp().run()
+    snakeApp = SnakeApp()
+    snakeApp.run()
