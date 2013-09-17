@@ -19,9 +19,12 @@ class Map(object):
 
     def add_egg(self, position):
         self.__add(position, 'egg')
-        
+
     def add_block(self, position):
         self.__add(position, 'block')
+
+    def remove(self, pos):
+        self.objects.pop(pos, None)
 
     def out_of_map(self, snake):
         for body in snake:
@@ -29,10 +32,10 @@ class Map(object):
                 or body.imag < 0 or body.imag >= self.size.imag):
                 return True
         return False
-    
+
     def __check_snakes(self, snakes, snake_bodies):
         dead_snakes = set()
-        
+
         for s in snakes:
             head_cell = snake_bodies[s.head]
 
@@ -47,14 +50,19 @@ class Map(object):
         self.last_snapshot.update(snake_bodies)
 
     def random_position(self):
-        return complex(random.randint(self.size.real), random.randint(self.size.imag))
-    
+        return complex(random.randint(0, self.size.real), random.randint(0, self.size.imag))
+
     def random_empty_cell(self):
-        pos = self.last_snapshot.keys()[0]
+        pos = self.random_position()
         while self.last_snapshot.get(pos):
             pos = self.random_position()
         return pos
-    
+
+    def put_random_egg(self):
+        pos = self.random_empty_cell()
+        self.add_egg(pos)
+        return pos
+
     def draw_and_check_snakes(self, snakes):
         ''' Draw snakes and return dead snakes. '''
 
