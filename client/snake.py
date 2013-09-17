@@ -24,19 +24,16 @@ HALF_BORDER_WIDTH = 2
 def pos_str(x, y):
     return '%d, %d' % (x, y)
 
-class TouchControllDispatcher(EventDispatcher):
+class TouchControlDispatcher(EventDispatcher):
     def __init__(self, **kwargs):
         self.register_event_type('on_touch_move_event')
-        super(TouchControllDispatcher, self).__init__(**kwargs)
+        super(TouchControlDispatcher, self).__init__(**kwargs)
             
     def on_touch_move(self, value):
-        print 'event dispatch'
         self.dispatch('on_touch_move_event', value)
 
     def on_touch_move_event(self, *args):
         pass
-
-touchControllDispatcher = TouchControllDispatcher()
 
 class SquareWidget(Widget):
     obj = OptionProperty(NOTHING, options=(NOTHING, SNAKE, MY_SNAKE, EGG, WALL))
@@ -54,14 +51,15 @@ class SquareWidget(Widget):
         self.canvas.ask_update()
 
 class BoardWidget(GridLayout):
-    def __init__(self, size):
+    def __init__(self, size, dispatcher):
         super(self.__class__, self).__init__()
 
         rows, cols = size
         self.rows = rows
         self.cols = cols
         self.widgets = {}
-
+        self.dispatcher = dispatcher
+        
         for i in xrange(self.rows * self.cols):
             sw = SquareWidget()
             pos = i % self.rows, i / self.cols
@@ -74,11 +72,9 @@ class BoardWidget(GridLayout):
             return super(BoardWidget, self).on_touch_move(event)
         
         self.moved_in_this_touch = True
+        self.dispatcher.on_touch_move(event)
 
-        if getattr(touchControllDispatcher, 'on_touch_move', None) != None:
-            touchControllDispatcher.on_touch_move(event)
-
-        return super(BoardWidget, self).on_touch_move(event)
+        return True
 
     def on_touch_up(self, event):
         self.moved_in_this_touch = None
@@ -109,7 +105,8 @@ class SnakeApp(App):
         self._keyboard = None
     
     def init_touch_events(self, **kwargs):
-        touchControllDispatcher.bind(on_touch_move_event=self._on_touch_move_event)
+        self.touchControlDispatcher = TouchControlDispatcher()
+        self.touchControlDispatcher.bind(on_touch_move_event=self._on_touch_move_event)
     
     def handle_message(self, content):
         json_obj = json.loads(content)
@@ -151,8 +148,7 @@ class SnakeApp(App):
         self.sock.send('{"action": "new_snake"}\r\n')
     
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-        print 'dispatch to _on_keyboard_down'
-        send_turn_command(self, keycode[1])
+        self.send_turn_command(keycode[1])
     
     def send_turn_command(self, keycode):
         direction = None
@@ -199,7 +195,7 @@ class SnakeApp(App):
 
         Clock.schedule_interval(self.recv, 1.0)
         print 'map size: %s' % self.map_size
-        self.board = BoardWidget(self.map_size)
+        self.board = BoardWidget(self.map_size, self.touchControlDispatcher)
 
         return self.board
 
