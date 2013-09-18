@@ -1,0 +1,3 @@
+[submodule "client/modules/kivy-particle"]
+	path = client/modules/kivy-particle
+	url = https://github.com/skitoo/kivy-particle.git
